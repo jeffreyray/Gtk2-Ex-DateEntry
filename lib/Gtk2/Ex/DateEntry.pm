@@ -82,9 +82,15 @@ sub set_today {
     my $self = shift;
     my ($hour, $minute) = (localtime time)[2,1];
     
-    my $value = sprintf '%02d:%02d', $hour, $minute;
+    my $obj   = $self->{datetime};
+    my $today = DateTime->now;
     
-    $self->set_value( $value );
+    if ($obj && $obj->ymd eq $today->ymd) {
+        return;
+    } else {
+        $self->{datetime} = $today;
+        $self->signal_emit('value-changed');
+    }
 }
 
 sub _do_value_changed {
@@ -135,8 +141,7 @@ sub _do_key_left {
         elsif ($_ eq 'day'  ) { $self->set_selected_component('month') }
         elsif ($_ eq 'year' ) { $self->set_selected_component('day')   }
     }
-    
-    print $self->get_selected_component, "\n";
+
     return TRUE;
 }
 
@@ -147,9 +152,9 @@ sub _do_key_right {
     
     for ($selected) {
         if    ($_ eq 'all'  ) { return FALSE }
-        elsif ($_ eq 'month') { print "A"; $self->set_selected_component('day')   }
-        elsif ($_ eq 'day'  ) { print "B"; $self->set_selected_component('year')  }
-        elsif ($_ eq 'year' ) { print "C"; $self->set_selected_component('all')   }
+        elsif ($_ eq 'month') { $self->set_selected_component('day')   }
+        elsif ($_ eq 'day'  ) { $self->set_selected_component('year')  }
+        elsif ($_ eq 'year' ) { $self->set_selected_component('all')   }
     }
     return TRUE;
 }
@@ -167,7 +172,7 @@ sub _do_key_up {
         elsif ($_ eq 'year' ) { $obj->add(years => 1)   }
     }      
 
-    $self->_display_output;
+    $self->signal_emit('value-changed');
     $self->set_selected_component($selected);
     
     return TRUE;
@@ -177,9 +182,7 @@ sub _do_key_down {
     my $self = shift;
     my $selected = $self->get_selected_component;  
     $self->_select_closest_component('down') and return TRUE unless $selected;
-    
-    print "DOWN\n";
-    
+
     my $obj = $self->{datetime};
     for ($selected) {
         if    ($_ eq 'all'  ) { $obj->subtract(days  => 7) }
@@ -188,7 +191,7 @@ sub _do_key_down {
         elsif ($_ eq 'year' ) { $obj->subtract(years => 1) }
     }
     
-    $self->_display_output;
+    $self->signal_emit('value-changed');
     $self->set_selected_component($selected);
     return TRUE;
 }
@@ -197,7 +200,7 @@ sub _display_output {
     my $self  = shift;
     
     my $obj = $self->{datetime};
-    my $output = $obj ? sprintf ('%02d/%02d/%4d', $obj->month, $obj->day, $obj->year) : '';
+    my $output = $obj ? sprintf ('%02d/%02d/%04d', $obj->month, $obj->day, $obj->year) : '';
     $self->set_text($output);
 }
 
@@ -302,29 +305,57 @@ sub _select_closest_component {
 sub _parse_input {
     my $self  = shift;
     my $value = shift || '';
-    $value =~ s/^\s+//;
-    $value =~ s/\s+$//;
+    $value =~ s/\s//g;
     return undef if ! defined $value || $value eq '';
-    
-    
-    
+   
     my ($d, $m, $y);
+    # when the user is just changing the day of the month
     if ($value =~ /^(\d{1,2})$/) {
         $d = $1;
         $m = 0;
         $y = 0;
     }
-    elsif ($value =~ /^([01]?[0-9])([.-\/\\])?([0-3][0-9])\2(([0-9]{2})|([0-9]{4}))?$/) {
-        $m = $1;
-        $d = $3;
-        $y = $4 || 0;
+    # when the user is just changing the year
+    elsif ($value =~ /^\d{4}$/ && int ($value) > 1231) {
+        $m = 0;
+        $d = 0;
+        $y = $value;
+    }
+    # for parsing mm-dd-yyyy style objects (or mmddyy mmdd etc)
+    elsif ($value =~ /^([01]?[0-9])([ \.\-\/\\])?([0-3][0-9])([ \.\-\/\\])?(([0-9]{2})|([0-9]{4}))?$/) {
+        $m = $1 || 0;
+        $d = $3 || 0;
+        $y = $5 || 0;
+        
+        if ($y) {
+            if    ($y <= 20) { $y += 2000 }
+            elsif ($y <= 99) { $y += 1900 }
+        }
+    }
+    # for parsing yyyy-mm-dd style dates - year must be 4 digits in this scenario
+    elsif ($value =~ /^(\d{4})([ \.\-\/\\])?([0-3][0-9])([ \.\-\/\\])?([01]?[0-9])$/) {
+        $y = $1;
+        $m = $3;
+        $d = $5;
     }
     else {
         return $self->{datetime};
     }
-
-    DateTime->new(day => $d, month => $m, year => $y);
     
+    # fill in missing values using the currently set date, or the current date
+    my $obj = $self->{datetime};
+    $obj = $obj ? $obj : DateTime->now;
+    
+    my ($cd, $cm, $cy);
+    $cd = $obj->day;
+    $cm = $obj->month;
+    $cy = $obj->year;
+    
+    $m = $m ? $m : $cm;
+    $d = $d ? $d : $cd;
+    $y = $y ? $y : $cy;
+
+    return DateTime->new(day => $d, month => $m, year => $y);
 }
 
 
@@ -335,92 +366,102 @@ __END__
 
 =head1 NAME
 
-Gtk2::Ex::TimeEntry -- Widget for entering times
+Gtk2::Ex::DateEntry -- Widget for entering dates
 
 =head1 SYNOPSIS
 
- use Gtk2::Ex::TimeEntry;
- $te = Gtk2::Ex::TimeEntry->new (value => '13:00:00');
- $te->set_value('1pm');
- $te->get_value;
+ use Gtk2::Ex::DateEntry;
+ $de = Gtk2::Ex::DateEntry->new;
+ $de->set_value('10132009');
+ $de->get_value;
 
 =head1 WIDGET HIERARCHY
 
     Gtk2::Widget
       Gtk2::Entry
-        Gtk2::Ex::TimeEntry
+        Gtk2::Ex::DateEntry
 
 =head1 DESCRIPTION
 
-C<Gtk2::Ex::TimeEntry> displays and edits a time in HH::MM PM format with some
+C<Gtk2::Ex::DateEntry> displays and edits a date in MM/DD/YYYY format with some
 convienence functions.
 
 Use the up and down keys to modify the invidual components of the value, and the
 left and right keys to navigate between them. Pressing up or down while the
 entire contents of the entry is selected (such as when you focus-in) modifies
-the value in 15 minute increments.
+the value in 7 day increments.
 
-The time is stored in HH:MM:SS format (but display in HH:MM PM format). If you
-entry a value 24:00:00 or higher, it will loop back around t
+The date is displayed in the widget in MM/DD/YYYY format, but the results from
+C<get_value> are in the format YYYY-MM-DD. The reason being that dates are most
+commonly (in the west) displayed as MM/DD/YYYY, however when programming it is
+much more common to encounter dates in the format YYYY-MM-DD.
 
-You can also type a time into the entry into various formats, which will be
-parsed and then displayed in the entry in HH:MM PM format. Here are some
+You can also type a date into the entry into various formats, which will be
+parsed and then displayed in the entry in MM/DD/YYYY format. Below are some
 examples of things you can enter into the widget and the resulting internal and
-display values.
+display values. Also note that whitespace is ignored during parsing.
 
 =over 4
 
-INPUT       VALUE       DISPLAY
-1           01:00:00    01:00 AM
-10          10:00:00    10:00 AM
-420         04:20:00    04:20 AM
-4:20        04:20:00    04:20 AM
-420pm       16:20:00    04:20 PM
-04:20 PM    16:20:00    04:20 PM
-30:20:00    04:20:00    04:20 AM
+INPUT         VALUE         DISPLAY
+08/11/1986    1986-08-11    08/11/1986
+08-11-1986    1986-08-11    08/11/1986
+08.11.1986    1986-08-11    08/11/1986
+08111986      1986-08-11    08/11/1986
+081186        1986-08-11    08/11/1986
 
 =back 4
+
+Entering a partial date (just year, month, day) will result in the remaining
+components being filled in for you. If the widget is currently set to a date,
+the current values will be used. If the widget is not set to a date, the
+current system date will be used to fill in the missing values.
+
+=over 4
+
+STARTING       INPUT     RESULT
+1986-08-11     10        1986-08-10  # 1-2 digits, setsday of month            
+1986-08-11     1231      1986-12-31  # 3-4 digits sets month, day
+1986-08-11     2009      2009-12-31  # 4 digits (> 1231) sets year
+
+=back 4
+
+This may all seem confusing, just try playing around with the widget. It should
+generally just do what you would expect.
+
 
 =head1 FUNCTIONS
 
 =over 4
 
-=item C<< $te = Gtk2::Ex::TimeEntry->new (key=>value,...) >>
+=item C<< $te = Gtk2::Ex::DateEntry->new () >>
 
-Create and return a new DateSpinner widget.  Optional key/value pairs set
-initial properties per C<< Glib::Object->new >>.  Eg.
-
-    my $te = Gtk2::Ex::TimeEntry->new (value => '16:00:00');
+Create and return a new DateEntry widget. 
 
 =item C<< $te->get_selected_component >>
 
-Returns the currently selected component - any of hours, minutes, meridiem, all
-or an emptry string. An emptry string will be returned if the selection bounds
-contains more or less than 1 individual component, and will return all if all
-componentes are selected.
+Returns the currently selected component - any of 'month', 'day', 'year'.
+An emptry string will be returned if the selection bounds contains more or less
+than 1 individual component, and will return 'all' if all componentes are
+selected.
 
 =item C<< $te->set_selected_component($component) >>
 
 Highlights the given component, which can then be edited by typing over it or
-pressing the arrow keys up or down. You can pass the values all, hours, minutes,
-meridiem, an emptry string, or undef.
+pressing the arrow keys up or down. You can pass the values 'month', 'day',
+'year', 'all', 'none', undef, or an emptry string;
 
-=item C<< $te->set_now >>
+=item C<< $te->set_today >>
 
-Set the widget value to the current time. 
+Set the widget to the current date.
 
-=back
+=item C< $te->get_value >>
 
-=head1 PROPERTIES
+Return the current date in YYYY-MM-DD format.
 
-=over 4
+=item C<< $te->set_value ($value) >>
 
-=item C<value> (string, default '')
-
-The current time format in ISO format HH:MM:SS. Can be set to an empty string
-for no time. When setting the value you, you may pass any acceptable value
-outlined in the widget description, but the time will always be stored in
-HH:MM:SS format.
+Parses the content of $value then sets the widget to the resulting date.
 
 =back
 
@@ -436,32 +477,32 @@ Emitted after a succesful value change.
 
 =head1 SEE ALSO
 
-L<Gtk2::Ex::TimeEntry::CellRenderer>
+L<Gtk2::Ex::TimEntry>
 
 =head1 AUTHOR
 
-Jeffrey Hallock <jeffrey dot hallock at gmail dot com>
+Jeffrey Hallock <jeffrey.ray at ragingpony dot com>
 
 =head1 BUGS
 
-None known. Please send bugs to <jeffrey dot hallock at gmail dot org>.
+None known. Please send bugs to <jeffrey.ray at ragingpony dot com>.
 Patches and suggestions welcome.
 
 =head1 LICENSE
 
-Gtk2-Ex-TimeEntry is Copyright 2009 Jeffrey Hallock
+Gtk2-Ex-DateEntry is Copyright 2009 Jeffrey Ray Hallock
 
-Gtk2-Ex-TimeEntry is free software; you can redistribute it and/or modify
+Gtk2-Ex-DateEntry is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by the
 Free Software Foundation; either version 3, or (at your option) any later
 version.
 
-Gtk2-Ex-TimeEntry is distributed in the hope that it will be useful, but
+Gtk2-Ex-DateEntry is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
 more details.
 
 You should have received a copy of the GNU General Public License along with
-Gtk2-Ex-TimeEntry.  If not, see L<http://www.gnu.org/licenses/>.
+Gtk2-Ex-DateEntry.  If not, see L<http://www.gnu.org/licenses/>.
 
 =cut
