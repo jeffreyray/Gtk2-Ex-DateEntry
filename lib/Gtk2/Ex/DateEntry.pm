@@ -4,6 +4,8 @@ use warnings;
 use Carp;
 
 our $VERSION = 0.01;
+our $AUTHORITY = 'cpan:JHALLOCK';
+
 
 use Gtk2;
 use DateTime;
@@ -477,7 +479,7 @@ Emitted after a succesful value change.
 
 =head1 SEE ALSO
 
-L<Gtk2::Ex::TimEntry>
+L<Gtk2::Ex::TimeEntry>
 
 =head1 AUTHOR
 
