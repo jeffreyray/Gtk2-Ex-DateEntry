@@ -1,17 +1,14 @@
 package Gtk2::Ex::DateEntry;
-$Gtk2::Ex::TimeEntry::VERSION = 0.01;
 use strict;
 use warnings;
 use Carp;
 
+our $VERSION = 0.01;
 
 use Gtk2;
 use DateTime;
-
 use Glib qw(TRUE FALSE);
-our $VERSION = 3;
 
-use constant DEBUG => 0;
 
 use Glib::Object::Subclass
     Gtk2::Entry::,
@@ -132,30 +129,38 @@ sub _do_key_press_event {
 sub _do_key_left {
     my $self = shift;
     my $selected = $self->get_selected_component;
-    $self->_select_closest_component('left') and return TRUE if ! $selected;
-
     
-    for ($selected) {
-        if    ($_ eq 'all'  ) { return FALSE }
-        elsif ($_ eq 'month') { $self->set_selected_component('all')   }
-        elsif ($_ eq 'day'  ) { $self->set_selected_component('month') }
-        elsif ($_ eq 'year' ) { $self->set_selected_component('day')   }
+    if (! $selected) {
+        return FALSE if $self->get_position == 0;
+        $self->_select_closest_component('left');
+        return TRUE;
     }
-
+    else {
+        if    ($selected eq 'all'  ) { $self->set_selected_component('year')  }
+        elsif ($selected eq 'month') { return FALSE;                          }
+        elsif ($selected eq 'day'  ) { $self->set_selected_component('month') }
+        elsif ($selected eq 'year' ) { $self->set_selected_component('day')   }
+    }
+    
     return TRUE;
 }
 
 sub _do_key_right {
     my $self = shift;
     my $selected = $self->get_selected_component;
-    $self->_select_closest_component('right') and return TRUE if !$selected;
     
-    for ($selected) {
-        if    ($_ eq 'all'  ) { return FALSE }
-        elsif ($_ eq 'month') { $self->set_selected_component('day')   }
-        elsif ($_ eq 'day'  ) { $self->set_selected_component('year')  }
-        elsif ($_ eq 'year' ) { $self->set_selected_component('all')   }
+    if (! $selected) {
+        return FALSE if $self->get_position == length $self->get_text;
+        $self->_select_closest_component('right');
+        return TRUE;
     }
+    else {
+        if    ($selected eq 'all'  ) { $self->set_selected_component('month') }
+        elsif ($selected eq 'month') { $self->set_selected_component('day')   }
+        elsif ($selected eq 'day'  ) { $self->set_selected_component('year')  }
+        elsif ($selected eq 'year' ) { return FALSE;   }  
+    }
+
     return TRUE;
 }
 
@@ -166,10 +171,10 @@ sub _do_key_up {
     
     my $obj = $self->{datetime};
     for ($selected) {
-        if    ($_ eq 'all'  ) { $obj->add(days  => 7) }
+        if    ($_ eq 'all'  ) { $obj->add(days  => 7)  }
         elsif ($_ eq 'month') { $obj->add(months => 1) }
-        elsif ($_ eq 'day'  ) { $obj->add(days  => 1) }
-        elsif ($_ eq 'year' ) { $obj->add(years => 1)   }
+        elsif ($_ eq 'day'  ) { $obj->add(days  => 1)  }
+        elsif ($_ eq 'year' ) { $obj->add(years => 1)  }
     }      
 
     $self->signal_emit('value-changed');
@@ -222,6 +227,7 @@ sub _display_output {
         $start = 0 unless $start;
         $end = 0 unless $end;
         return undef if $start == $end;
+        
         
         for my $name (keys %pos) {
             my $coords = $pos{$name};
@@ -284,18 +290,12 @@ sub _select_closest_component {
         $self->set_selected_component('year');
     }
     elsif ($cursor == 6 && $direction eq 'left') {
-        $self->set_selected_component('year');
+        $self->set_selected_component('day');
     }
     elsif ($cursor == 6 && $direction ne 'left') {
         $self->set_selected_component('year');
     }
-    elsif ($cursor == 7 && $direction eq 'left') {
-        $self->set_selected_component('day');
-    }
-    elsif ($cursor == 7) {
-        $self->set_selected_componenet('year');
-    }
-    elsif ($cursor >= 8) {
+    elsif ($cursor >= 7) {
         $self->set_selected_component('year');
     }
     
@@ -333,7 +333,7 @@ sub _parse_input {
         }
     }
     # for parsing yyyy-mm-dd style dates - year must be 4 digits in this scenario
-    elsif ($value =~ /^(\d{4})([ \.\-\/\\])?([0-3][0-9])([ \.\-\/\\])?([01]?[0-9])$/) {
+    elsif ($value =~ /^(\d{4})([ \.\-\/\\])?([01]?[0-9])([ \.\-\/\\])?([0-3][0-9])$/) {
         $y = $1;
         $m = $3;
         $d = $5;
@@ -403,14 +403,14 @@ display values. Also note that whitespace is ignored during parsing.
 
 =over 4
 
-INPUT         VALUE         DISPLAY
-08/11/1986    1986-08-11    08/11/1986
-08-11-1986    1986-08-11    08/11/1986
-08.11.1986    1986-08-11    08/11/1986
-08111986      1986-08-11    08/11/1986
-081186        1986-08-11    08/11/1986
+  INPUT         VALUE         DISPLAY
+  08/11/1986    1986-08-11    08/11/1986
+  08-11-1986    1986-08-11    08/11/1986
+  08.11.1986    1986-08-11    08/11/1986
+  08111986      1986-08-11    08/11/1986
+  081186        1986-08-11    08/11/1986
 
-=back 4
+=back
 
 Entering a partial date (just year, month, day) will result in the remaining
 components being filled in for you. If the widget is currently set to a date,
@@ -419,12 +419,12 @@ current system date will be used to fill in the missing values.
 
 =over 4
 
-STARTING       INPUT     RESULT
-1986-08-11     10        1986-08-10  # 1-2 digits, setsday of month            
-1986-08-11     1231      1986-12-31  # 3-4 digits sets month, day
-1986-08-11     2009      2009-12-31  # 4 digits (> 1231) sets year
+  STARTING       INPUT     RESULT
+  1986-08-11     10        1986-08-10  # 1-2 digits, setsday of month
+  1986-08-11     1231      1986-12-31  # 3-4 digits sets month, day
+  1986-08-11     2009      2009-12-31  # 4 digits (> 1231) sets year
 
-=back 4
+=back
 
 This may all seem confusing, just try playing around with the widget. It should
 generally just do what you would expect.
@@ -455,7 +455,7 @@ pressing the arrow keys up or down. You can pass the values 'month', 'day',
 
 Set the widget to the current date.
 
-=item C< $te->get_value >>
+=item C<< $te->get_value >>
 
 Return the current date in YYYY-MM-DD format.
 
@@ -469,7 +469,7 @@ Parses the content of $value then sets the widget to the resulting date.
 
 =over 4
 
-=item C<value-changed>)
+=item C<value-changed>
 
 Emitted after a succesful value change.
 
