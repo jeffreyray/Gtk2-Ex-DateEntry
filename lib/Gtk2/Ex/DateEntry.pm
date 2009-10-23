@@ -436,32 +436,32 @@ Emitted after a succesful value change.
 
 =head1 SEE ALSO
 
-L<Gtk2::Ex::TimeEntry::CellRenderer>
+L<Gtk2::Ex::DateEntry::CellRenderer>
 
 =head1 AUTHOR
 
-Jeffrey Hallock <jeffrey dot hallock at gmail dot com>
+Jeffrey Hallock <jeffrey.ray at ragingpony com>
 
 =head1 BUGS
 
-None known. Please send bugs to <jeffrey dot hallock at gmail dot org>.
+None known. Please send bugs to <jeffrey.ray at ragingpony dot com>.
 Patches and suggestions welcome.
 
 =head1 LICENSE
 
-Gtk2-Ex-TimeEntry is Copyright 2009 Jeffrey Hallock
+Gtk2-Ex-DateEntry is Copyright 2009 Jeffrey Hallock
 
-Gtk2-Ex-TimeEntry is free software; you can redistribute it and/or modify
+Gtk2-Ex-DateEntry is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by the
 Free Software Foundation; either version 3, or (at your option) any later
 version.
 
-Gtk2-Ex-TimeEntry is distributed in the hope that it will be useful, but
+Gtk2-Ex-DateEntry is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
 more details.
 
 You should have received a copy of the GNU General Public License along with
-Gtk2-Ex-TimeEntry.  If not, see L<http://www.gnu.org/licenses/>.
+Gtk2-Ex-DateEntry.  If not, see L<http://www.gnu.org/licenses/>.
 
 =cut
