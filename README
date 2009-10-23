@@ -1,7 +1,7 @@
-Gtk2-Ex-TimeEntry version 0.01
+Gtk2-Ex-DateEntry version 0.01
 ==============================
 
-An entry widget for inputting that time of the day.
+An Gtk2 widget for entering dates.
 
 INSTALLATION
 
@@ -17,15 +17,23 @@ DEPENDENCIES
 This module requires these other modules and libraries:
 
   Gtk2
+  DateTime
 
 COPYRIGHT AND LICENCE
 
-Put the correct copyright and licence information here.
+Gtk2-Ex-DateEntry is Copyright 2009 Jeffrey Ray Hallock
 
-Copyright (C) 2009 by Jeffrey Ray Hallock
+Gtk2-Ex-DateEntry is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3, or (at your option) any later
+version.
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.10.0 or,
-at your option, any later version of Perl 5 you may have available.
+Gtk2-Ex-DateEntry is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+more details.
+
+You should have received a copy of the GNU General Public License along with
+Gtk2-Ex-DateEntry.  If not, see L<http://www.gnu.org/licenses/>.
 
 

@@ -8,6 +8,6 @@ WriteMakefile(
     PREREQ_PM         => {  Gtk2     => 0,
                             DateTime => 0 }, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Gtk2/Ex/DateEntry.pm', # retrieve abstract from module
+      (ABSTRACT       => 'Gtk2 widget for entering dates',
        AUTHOR         => 'Jeffrey Ray Hallock < jeffrey.ray at ragingpony dot com >') : ()),
 );
